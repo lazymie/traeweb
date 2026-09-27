@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  line-height: 1.6;
+  font-weight: 400;
+  color: #2B2A28;
+  background-color: #FBF7F0;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #FBF7F0;
+  color: #2B2A28;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D8D0BE;
+  border-radius: 999px;
+  border: 2px solid #FBF7F0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C9C0A9;
+}
+
+/* Selection color */
+::selection {
+  background: #E8623A;
+  color: #FBF7F0;
+}
+
+@layer components {
+  /* Buttons */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-coral-400 px-6 py-2.5 text-sm font-semibold text-cream-50 shadow-soft transition-all hover:bg-coral-500 hover:-translate-y-0.5 hover:shadow-card active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-ink-900/20 bg-transparent px-6 py-2.5 text-sm font-semibold text-ink-900 transition-all hover:border-coral-400 hover:text-coral-400 hover:-translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-ink-700 transition-colors hover:bg-warm-100 hover:text-ink-900;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-red-500/90 px-5 py-2 text-sm font-semibold text-white shadow-soft transition-all hover:bg-red-600 hover:-translate-y-0.5;
+  }
+
+  /* Card */
+  .card {
+    @apply rounded-3xl bg-cream-50 shadow-soft border border-warm-100/70;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium font-mono;
+  }
+
+  /* Input */
+  .input-base {
+    @apply w-full rounded-xl border border-warm-200 bg-cream-50 px-3.5 py-2.5 text-sm text-ink-900 placeholder:text-ink-500/60 transition-colors focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/15;
+  }
+
+  /* Section heading */
+  .heading-eyebrow {
+    @apply inline-flex items-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-coral-500;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .animate-delay-100 { animation-delay: 0.1s; }
+  .animate-delay-200 { animation-delay: 0.2s; }
+  .animate-delay-300 { animation-delay: 0.3s; }
+  .animate-delay-400 { animation-delay: 0.4s; }
+  .animate-delay-500 { animation-delay: 0.5s; }
+}
