@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PawPrint, Users, HeartHandshake, CheckCircle2, TrendingUp, AlertCircle, ArrowRight, PawPrint as Paw } from 'lucide-react';
 import type { AdminStats } from '../../../shared/types';
-import { get } from '@/utils/api';
+import { get, asArray } from '@/utils/api';
 import { PageLoading } from '@/components/Loading';
 import { ROLE_LABELS, relativeTime, formatDateTime, PET_STATUS_LABELS, ADOPTION_STATUS_LABELS } from '@/utils/format';
 import type { Pet, Adoption, User } from '../../../shared/types';
@@ -20,9 +20,9 @@ export default function AdminDashboard() {
           get<(Pet & { publisher?: User })[]>('/admin/pets', { status: 'pending' }),
           get<(Adoption & { pet?: Pet; applicant?: User })[]>('/admin/adoptions', { status: 'pending' }),
         ]);
-        setStats(s);
-        setPendingPets(pets);
-        setPendingAdoptions(adoptions);
+        setStats(s && typeof s === 'object' ? s : null);
+        setPendingPets(asArray(pets));
+        setPendingAdoptions(asArray(adoptions));
       } catch (e) {}
     })();
   }, []);

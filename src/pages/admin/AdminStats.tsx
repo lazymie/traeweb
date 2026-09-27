@@ -16,7 +16,7 @@ import {
   Legend,
 } from 'recharts';
 import type { AdminStats, PetStatus, AdoptionStatus } from '../../../shared/types';
-import { get } from '@/utils/api';
+import { get, asArray } from '@/utils/api';
 import { toast } from '@/store/toast';
 import { PageLoading } from '@/components/Loading';
 import { CATEGORY_LABELS, PET_STATUS_LABELS, ADOPTION_STATUS_LABELS } from '@/utils/format';
@@ -73,7 +73,13 @@ export default function AdminStats() {
         { status: 'rejected', count: 0 },
         { status: 'cancelled', count: 0 },
       ];
-      setStats({ ...data, petStatusBreakdown, adoptionStatusBreakdown });
+      setStats({
+        ...data,
+        petsByCategory: asArray(data?.petsByCategory),
+        applicationsTrend: asArray(data?.applicationsTrend),
+        petStatusBreakdown,
+        adoptionStatusBreakdown,
+      });
     } catch (e: any) {
       toast.error(e.message);
     } finally {

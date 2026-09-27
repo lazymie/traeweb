@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { RefreshCw, Plus, Pin, PinOff, Edit3, Trash2, Eye, Megaphone, Power } from 'lucide-react';
 import type { Announcement, AnnouncementStatus } from '../../../shared/types';
-import { get, post, put, del } from '@/utils/api';
+import { get, post, put, del, asArray } from '@/utils/api';
 import { toast } from '@/store/toast';
 import Modal from '@/components/Modal';
 import { PageLoading } from '@/components/Loading';
@@ -45,7 +45,7 @@ export default function AdminAnnouncements() {
     setLoading(true);
     try {
       const data = await get<Announcement[]>('/announcements/admin/all');
-      setList(data);
+      setList(asArray(data));
     } catch (e: any) {
       toast.error(e.message);
     } finally {

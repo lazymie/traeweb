@@ -19,6 +19,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => {
     const body = response.data as ApiResponse<unknown>;
+    // 信封格式：拆包返回
     if (body && typeof body === 'object' && 'code' in body) {
       if (body.code !== 0) {
         // 业务错误
@@ -27,6 +28,10 @@ api.interceptors.response.use(
         return Promise.reject(err);
       }
       return { ...response, data: body.data };
+    }
+    // 非信封格式（如网关返回 HTML 错误页 / 纯文本）：拒绝，防止脏数据流入页面导致白屏
+    if (typeof body === 'string' || body === null || body === undefined) {
+      return Promise.reject(new Error('服务暂时不可用，请稍后重试'));
     }
     return response;
   },
@@ -47,6 +52,11 @@ api.interceptors.response.use(
 export async function get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
   const res = await api.get(url, { params });
   return res.data as T;
+}
+
+// 数组安全守卫：无论 API 返回什么，保证得到数组，防止 .map() 白屏崩溃
+export function asArray<T = any>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
 }
 
 export async function post<T>(url: string, data?: unknown): Promise<T> {

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Search, RefreshCw, Shield, UserCheck, UserX, Edit3, Mail } from 'lucide-react';
 import type { User, UserRole, UserStatus } from '../../../shared/types';
-import { get, put } from '@/utils/api';
+import { get, put, asArray } from '@/utils/api';
 import { toast } from '@/store/toast';
 import Modal from '@/components/Modal';
 import { PageLoading } from '@/components/Loading';
@@ -50,7 +50,7 @@ export default function AdminUsers() {
       if (role !== 'all') params.role = role;
       if (status !== 'all') params.status = status;
       const data = await get<User[]>('/admin/users', params);
-      setList(data);
+      setList(asArray(data));
     } catch (e: any) {
       toast.error(e.message);
     } finally {

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Check, X, RefreshCw, MessageSquarePlus, HeartHandshake } from 'lucide-react';
 import type { Adoption, AdoptionStatus, Pet, User } from '../../../shared/types';
-import { get, put, post } from '@/utils/api';
+import { get, put, post, asArray } from '@/utils/api';
 import { toast } from '@/store/toast';
 import Modal from '@/components/Modal';
 import EmptyState from '@/components/Empty';
@@ -31,7 +31,7 @@ export default function AdminAdoptions() {
       const params: Record<string, unknown> = {};
       if (status !== 'all') params.status = status;
       const data = await get<(Adoption & { pet?: Pet; applicant?: User })[]>('/admin/adoptions', params);
-      setList(data);
+      setList(asArray(data));
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -198,10 +198,10 @@ export default function AdminAdoptions() {
 
             {/* 回访记录 */}
             <div>
-              <p className="text-xs font-mono uppercase text-ink-500 mb-2">回访记录（{detail.followups.length}）</p>
-              {detail.followups.length > 0 ? (
+              <p className="text-xs font-mono uppercase text-ink-500 mb-2">回访记录（{asArray(detail.followups).length}）</p>
+              {asArray(detail.followups).length > 0 ? (
                 <div className="space-y-2">
-                  {detail.followups.map(f => (
+                  {asArray(detail.followups).map(f => (
                     <div key={f.id} className="rounded-xl bg-warm-100 p-3 text-sm">
                       <p className="text-ink-900">{f.content}</p>
                       <p className="mt-1 text-xs text-ink-500">{formatDateTime(f.createdAt)}</p>

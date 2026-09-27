@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, SlidersHorizontal, X, PawPrint } from 'lucide-react';
 import type { Pet, PetQuery, PetCategory, PetGender } from '../../shared/types';
-import { get } from '@/utils/api';
+import { get, asArray } from '@/utils/api';
 import PetCard from '@/components/PetCard';
 import Pagination from '@/components/Pagination';
 import EmptyState from '@/components/Empty';
@@ -56,8 +56,8 @@ export default function PetList() {
     setLoading(true);
     try {
       const res = await get<{ list: Pet[]; total: number }>('/pets', query as Record<string, unknown>);
-      setPets(res.list);
-      setTotal(res.total);
+      setPets(asArray(res?.list));
+      setTotal(res?.total ?? 0);
     } catch (e: any) {
       toast.error(e.message || '加载失败');
     } finally {

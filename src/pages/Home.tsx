@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Search, Heart, FileText, Home as HomeIcon, PawPrint, Megaphone, Sparkles } from 'lucide-react';
 import type { Pet, Announcement } from '../../shared/types';
-import { get } from '@/utils/api';
+import { get, asArray } from '@/utils/api';
 import PetCard from '@/components/PetCard';
 import { PetCardSkeleton } from '@/components/Loading';
 import { relativeTime } from '@/utils/format';
@@ -30,8 +30,8 @@ export default function Home() {
           get<{ list: Pet[]; total: number }>('/pets', { pageSize: 8, sort: 'latest' }),
           get<Announcement[]>('/announcements'),
         ]);
-        setPets(petRes.list);
-        setAnnouncements(annRes.slice(0, 5));
+        setPets(asArray(petRes?.list));
+        setAnnouncements(asArray(annRes).slice(0, 5));
       } finally {
         setLoading(false);
       }

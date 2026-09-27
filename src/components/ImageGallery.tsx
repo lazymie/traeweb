@@ -8,11 +8,11 @@ interface ImageGalleryProps {
   className?: string;
 }
 
-export default function ImageGallery({ images, alt, className }: ImageGalleryProps) {
+export default function ImageGallery({ images = [], alt, className }: ImageGalleryProps) {
   const [active, setActive] = useState(0);
   const [zoom, setZoom] = useState(false);
 
-  if (!images.length) {
+  if (!Array.isArray(images) || !images.length) {
     return (
       <div className={cn('flex aspect-[4/3] items-center justify-center rounded-3xl bg-warm-100 text-ink-500', className)}>
         <Expand size={32} />

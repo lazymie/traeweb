@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Check, X, Eye, ArrowDownUp, RefreshCw, Search } from 'lucide-react';
 import type { Pet, PetStatus, User } from '../../../shared/types';
-import { get, put } from '@/utils/api';
+import { get, put, asArray } from '@/utils/api';
 import { toast } from '@/store/toast';
 import Modal from '@/components/Modal';
 import { PageLoading } from '@/components/Loading';
@@ -30,7 +30,7 @@ export default function AdminPets() {
     setLoading(true);
     try {
       const data = await get<(Pet & { publisher?: User })[]>('/admin/pets', { status });
-      setList(data);
+      setList(asArray(data));
     } catch (e: any) {
       toast.error(e.message);
     } finally {

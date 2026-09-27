@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Heart, MapPin, Eye, Syringe, Stethoscope, ShieldCheck, PawPrint, ArrowLeft, Send, Calendar, User as UserIcon } from 'lucide-react';
 import type { Pet, User, Comment } from '../../shared/types';
-import { get, post, del } from '@/utils/api';
+import { get, post, del, asArray } from '@/utils/api';
 import ImageGallery from '@/components/ImageGallery';
 import Modal from '@/components/Modal';
 import { PageLoading } from '@/components/Loading';
@@ -36,10 +36,10 @@ export default function PetDetail() {
     try {
       const data = await get<PetDetail>(`/pets/${id}`);
       setPet(data);
-      setComments(data.comments || []);
+      setComments(asArray(data?.comments));
       // 相关推荐
       const rel = await get<{ list: Pet[] }>('/pets', { category: data.category, pageSize: 4 });
-      setRelated(rel.list.filter(p => p.id !== data.id).slice(0, 3));
+      setRelated(asArray(rel?.list).filter(p => p.id !== data.id).slice(0, 3));
     } catch (e: any) {
       toast.error(e.message || '加载失败');
       navigate('/pets');

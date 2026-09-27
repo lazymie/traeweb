@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Mail, Phone, Edit3, Save, X, FileText, Heart, PawPrint, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import type { Pet, Adoption, User } from '../../shared/types';
-import { get, del, post } from '@/utils/api';
+import { get, del, post, asArray } from '@/utils/api';
 import { useAuthStore } from '@/store/auth';
 import { toast } from '@/store/toast';
 import PetCard from '@/components/PetCard';
@@ -58,17 +58,17 @@ export default function Profile() {
     if (tab === 'publish') {
       try {
         const list = await get<Pet[]>('/pets/mine');
-        setMyPets(list);
+        setMyPets(asArray(list));
       } catch (e: any) { toast.error(e.message); }
     } else if (tab === 'applications') {
       try {
         const list = await get<(Adoption & { pet?: Pet; applicant?: User })[]>('/adoptions');
-        setMyApplications(list);
+        setMyApplications(asArray(list));
       } catch (e: any) { toast.error(e.message); }
     } else if (tab === 'favorites') {
       try {
         const list = await get<Pet[]>('/auth/me/favorites');
-        setMyFavorites(list);
+        setMyFavorites(asArray(list));
       } catch (e: any) { toast.error(e.message); }
     }
   }, [tab, user]);

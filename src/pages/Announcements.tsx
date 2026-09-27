@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Megaphone, Pin, ChevronRight, ArrowLeft, Calendar } from 'lucide-react';
 import type { Announcement } from '../../shared/types';
-import { get } from '@/utils/api';
+import { get, asArray } from '@/utils/api';
 import { PageLoading } from '@/components/Loading';
 import EmptyState from '@/components/Empty';
 import { formatDateTime } from '@/utils/format';
@@ -15,7 +15,7 @@ export default function Announcements() {
     (async () => {
       try {
         const data = await get<Announcement[]>('/announcements');
-        setList(data);
+        setList(asArray(data));
       } catch (e) {
       } finally {
         setLoading(false);
