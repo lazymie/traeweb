@@ -1,0 +1,29 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+# 环境变量（也可在 Netlify 控制台手动配置）
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA 路由回退：非 /api /uploads 的请求都返回 index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+# /api/* 转发到 Netlify 函数
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+# /uploads/* 转发到函数（函数返回临时文件）
+[[redirects]]
+  from = "/uploads/*"
+  to = "/.netlify/functions/api/uploads/:splat"
+  status = 200
+  force = true

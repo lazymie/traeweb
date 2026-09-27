@@ -33,9 +33,16 @@ app.use(cors())
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
+// 环境检测：Vercel / Netlify Serverless 环境
+const IS_VERCEL = !!process.env.VERCEL
+const IS_NETLIFY = !!process.env.NETLIFY || !!process.env.CONTEXT
+const IS_SERVERLESS = IS_VERCEL || IS_NETLIFY
+
 // 静态文件：上传的图片
-const IS_VERCEL = !!process.env.VERCEL;
-const UPLOADS_DIR = IS_VERCEL ? '/tmp/uploads' : path.resolve(__dirname, '../uploads');
+// Serverless 环境：写入 /tmp（临时，实例回收后丢失）
+const UPLOADS_DIR = IS_SERVERLESS
+  ? '/tmp/uploads'
+  : path.resolve(__dirname, '../uploads')
 app.use('/uploads', express.static(UPLOADS_DIR))
 
 /**
@@ -56,19 +63,19 @@ app.use('/api/health', (_req: Request, res: Response) => {
 })
 
 /**
- * 404 handler
+ * 静态资源托管 + SPA 回退（仅本地/自有服务器模式启用）
+ * Netlify/Vercel 环境下，静态文件由平台直接托管，不需要 Express 提供
  */
-// 本地生产部署：托管前端构建产物 dist/（仅当目录存在时）
-const DIST_DIR = path.resolve(__dirname, '../dist');
-if (!IS_VERCEL && fs.existsSync(DIST_DIR)) {
-  app.use(express.static(DIST_DIR));
+const DIST_DIR = path.resolve(__dirname, '../dist')
+if (!IS_SERVERLESS && fs.existsSync(DIST_DIR)) {
+  app.use(express.static(DIST_DIR))
   // SPA 回退：非 /api、/uploads 的 GET 请求返回 index.html
   app.get('*', (req: Request, res: Response, next: NextFunction) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
-      return next();
+      return next()
     }
-    res.sendFile(path.join(DIST_DIR, 'index.html'));
-  });
+    res.sendFile(path.join(DIST_DIR, 'index.html'))
+  })
 }
 
 app.use(notFoundMiddleware)
