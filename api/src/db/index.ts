@@ -2,6 +2,7 @@ import { createClient, type Client } from '@libsql/client';
 
 let client: Client;
 let initialized = false;
+let initPromise: Promise<void> | null = null;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -107,52 +108,101 @@ CREATE TABLE IF NOT EXISTS favorites (
 );
 `;
 
-export async function initDb(): Promise<void> {
-  if (initialized) return;
+/**
+ * 初始化入口（并发安全）：
+ * 同一实例上的并发请求共享同一个初始化 Promise，不会重复建表/重复 seed；
+ * 失败后清空缓存，允许下次请求重试。
+ */
+export function initDb(): Promise<void> {
+  if (initialized) return Promise.resolve();
+  if (!initPromise) {
+    initPromise = doInit().catch((e) => {
+      initPromise = null;
+      throw e;
+    });
+  }
+  return initPromise;
+}
 
-  // 优先读取 Turso 环境变量；本地无配置时回退到本地 file: 数据库
-  const url = process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL;
-  const authToken = process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN;
+async function doInit(): Promise<void> {
+  try {
+    // 环境检测：serverless 平台（Netlify/Vercel/Lambda）文件系统只读，必须使用远程数据库
+    const IS_SERVERLESS = !!(
+      process.env.NETLIFY ||
+      process.env.VERCEL ||
+      process.env.AWS_LAMBDA_FUNCTION_NAME
+    );
 
-  if (url && (url.startsWith('libsql://') || url.startsWith('https://'))) {
-    client = createClient({ url, authToken });
-    console.log('[db] Turso client initialized for', url.replace(/:\/\/.*@/, '://'));
-  } else {
-    // 本地开发：使用 file: 协议
-    const localPath = process.env.LOCAL_DB_PATH || 'file:./data/app.db';
-    // 确保目录存在
-    if (localPath.startsWith('file:')) {
-      const fs = await import('fs');
-      const path = await import('path');
-      const filePart = localPath.slice('file:'.length);
-      const dir = path.dirname(filePart);
-      if (dir && !fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+    // 优先读取 Turso 环境变量；本地无配置时回退到本地 file: 数据库
+    const url = process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL;
+    const authToken = process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN;
+
+    if (url && (url.startsWith('libsql://') || url.startsWith('https://'))) {
+      // 注意：不打印 authToken，只打印脱敏后的 URL
+      console.log('[db][init] Step 1/3 连接远程 Turso 数据库:', url.replace(/:\/\/.*@/, '://'));
+      client = createClient({ url, authToken });
+      console.log('[db][init] 远程数据库客户端创建成功');
+    } else if (IS_SERVERLESS) {
+      // serverless 上漏配 Turso 变量 → 立即明确报错，避免回退到只读文件系统上的 file: 数据库
+      console.error('[db][init] 配置错误: serverless 环境未检测到 TURSO_DATABASE_URL');
+      console.error('[db][init] 请在 Netlify 控制台 Site settings → Environment variables 配置:');
+      console.error('[db][init]   TURSO_DATABASE_URL = libsql://<你的数据库名>.turso.io');
+      console.error('[db][init]   TURSO_AUTH_TOKEN  = <你的数据库访问令牌>');
+      throw new Error('缺少 TURSO_DATABASE_URL 环境变量：Netlify 环境不支持本地 SQLite 文件，请配置 Turso 远程数据库');
+    } else {
+      // 本地开发：使用 file: 协议
+      const localPath = process.env.LOCAL_DB_PATH || 'file:./data/app.db';
+      // 确保目录存在
+      if (localPath.startsWith('file:')) {
+        const fs = await import('fs');
+        const path = await import('path');
+        const filePart = localPath.slice('file:'.length);
+        const dir = path.dirname(filePart);
+        if (dir && !fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
       }
+      client = createClient({ url: localPath });
+      console.log('[db][init] Step 1/3 连接本地 SQLite 数据库:', localPath);
     }
-    client = createClient({ url: localPath });
-    console.log('[db] Local SQLite client initialized at', localPath);
-  }
 
-  // 建表（多条语句一次执行：libsql 支持批量）
-  // 由于 createClient 不支持多语句直接 execute，逐条 split
-  const statements = SCHEMA.split(';')
-    .map(s => s.trim())
-    .filter(s => s.length > 0);
-  for (const stmt of statements) {
-    await client.execute(stmt);
-  }
+    // Step 2: 建表（CREATE TABLE IF NOT EXISTS，幂等，已存在则跳过）
+    const statements = SCHEMA.split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+    for (const stmt of statements) {
+      await client.execute(stmt);
+    }
+    console.log(`[db][init] Step 2/3 建表完成（共 ${statements.length} 条语句，已存在的表自动跳过）`);
 
-  // 检查是否需要 seed（users 表是否有数据）
-  const check = await client.execute('SELECT COUNT(*) as c FROM users');
-  const count = (check.rows[0]?.c as number | undefined) ?? 0;
-  if (count === 0) {
-    const { seed } = await import('./seed.js');
-    await seed();
-  }
+    // Step 3: 种子检查——users 或 pets 任一为空都执行全量种子写入
+    const userCheck = await client.execute('SELECT COUNT(*) as c FROM users');
+    const petCheck = await client.execute('SELECT COUNT(*) as c FROM pets');
+    const userCount = (userCheck.rows[0]?.c as number | undefined) ?? 0;
+    const petCount = (petCheck.rows[0]?.c as number | undefined) ?? 0;
+    console.log(`[db][init] Step 3/3 种子数据检查: users=${userCount} 条, pets=${petCount} 条`);
 
-  initialized = true;
-  console.log('[db] Database initialized.');
+    if (userCount === 0 || petCount === 0) {
+      console.log('[db][init] 数据库为空，开始写入种子数据（3 个用户、8 只宠物、3 条公告等）...');
+      // 关键：建表已完成，先标记 initialized 再 seed。
+      // 否则 seed 内部的 run()/queryAll() 会因 initialized=false 再次调用 initDb()，造成无限递归
+      initialized = true;
+      const { seed } = await import('./seed.js');
+      await seed();
+    } else {
+      console.log('[db][init] 数据已存在，跳过种子写入');
+      initialized = true;
+    }
+
+    console.log('[db][init] 数据库初始化全部完成');
+  } catch (e) {
+    // 失败时输出明确的诊断日志后原样抛出，由上层（server/netlify handler）处理
+    console.error('[db][init] 数据库初始化失败:', e instanceof Error ? e.message : e);
+    if (e instanceof Error && e.message.includes('fetch failed')) {
+      console.error('[db][init] 提示: "fetch failed" 通常是 Turso 地址错误或 TURSO_AUTH_TOKEN 无效，请检查环境变量');
+    }
+    throw e;
+  }
 }
 
 export async function queryAll<T = Record<string, unknown>>(

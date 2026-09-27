@@ -12,7 +12,13 @@ async function ensureDb(): Promise<void> {
     dbPromise = initDb()
       .then(() => { dbReady = true })
       .catch((err) => {
-        console.error('[netlify] DB init failed:', err)
+        console.error('[netlify] 数据库初始化失败:', err instanceof Error ? err.message : err)
+        // 环境变量诊断（token 只输出是否配置，不输出值）
+        const dbUrl = process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL
+        const token = process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN
+        console.error('[netlify] 环境变量诊断: TURSO_DATABASE_URL =', dbUrl ? `已配置 (${dbUrl})` : '未配置 ❌',
+          '| TURSO_AUTH_TOKEN =', token ? '已配置 ✓' : '未配置 ❌')
+        console.error('[netlify] 排查建议: ① 确认 Netlify 控制台已配置以上两个变量 ② 确认 Turso 数据库地址和令牌有效 ③ 查看 Functions 日志中 [db][init] 开头的详细日志')
         dbPromise = null
         throw err
       })
