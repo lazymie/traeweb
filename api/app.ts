@@ -10,7 +10,6 @@ import cors from 'cors'
 import path from 'path'
 import fs from 'fs'
 import dotenv from 'dotenv'
-import { fileURLToPath } from 'url'
 
 import authRoutes from './routes/auth.js'
 import petRoutes from './routes/pets.js'
@@ -19,10 +18,6 @@ import announcementRoutes from './routes/announcements.js'
 import adminRoutes from './routes/admin.js'
 import uploadRoutes from './routes/upload.js'
 import { errorMiddleware, notFoundMiddleware } from './src/middlewares/error.js'
-
-// for esm mode
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 // load env
 dotenv.config()
@@ -40,9 +35,11 @@ const IS_SERVERLESS = IS_VERCEL || IS_NETLIFY
 
 // 静态文件：上传的图片
 // Serverless 环境：写入 /tmp（临时，实例回收后丢失）
+// 本地路径基于 process.cwd()（项目根目录）解析。
+// 注意：不要声明 __filename/__dirname —— Netlify 的 esbuild 打包会注入同名 shim，重复声明直接报 SyntaxError
 const UPLOADS_DIR = IS_SERVERLESS
   ? '/tmp/uploads'
-  : path.resolve(__dirname, '../uploads')
+  : path.resolve(process.cwd(), 'uploads')
 app.use('/uploads', express.static(UPLOADS_DIR))
 
 /**
@@ -66,7 +63,7 @@ app.use('/api/health', (_req: Request, res: Response) => {
  * 静态资源托管 + SPA 回退（仅本地/自有服务器模式启用）
  * Netlify/Vercel 环境下，静态文件由平台直接托管，不需要 Express 提供
  */
-const DIST_DIR = path.resolve(__dirname, '../dist')
+const DIST_DIR = path.resolve(process.cwd(), 'dist')
 if (!IS_SERVERLESS && fs.existsSync(DIST_DIR)) {
   app.use(express.static(DIST_DIR))
   // SPA 回退：非 /api、/uploads 的 GET 请求返回 index.html

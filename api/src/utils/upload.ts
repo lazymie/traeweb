@@ -1,17 +1,15 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 import type { Request } from 'express';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Vercel: 文件系统只读，仅 /tmp 可写
-const IS_VERCEL = !!process.env.VERCEL;
-const UPLOAD_DIR = IS_VERCEL
+// Serverless（Vercel/Netlify）：文件系统只读，仅 /tmp 可写。
+// 注意：不要声明 __filename/__dirname —— Netlify 的 esbuild 打包会注入同名 shim，重复声明直接报 SyntaxError。
+// 本地路径基于 process.cwd()（项目根目录）解析。
+const IS_SERVERLESS = !!(process.env.VERCEL || process.env.NETLIFY || process.env.CONTEXT);
+const UPLOAD_DIR = IS_SERVERLESS
   ? '/tmp/uploads'
-  : path.resolve(__dirname, '../../../uploads');
+  : path.resolve(process.cwd(), 'uploads');
 
 if (!fs.existsSync(UPLOAD_DIR)) {
   try {
