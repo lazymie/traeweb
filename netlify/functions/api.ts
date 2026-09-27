@@ -20,13 +20,28 @@ async function ensureDb(): Promise<void> {
   await dbPromise
 }
 
-// Netlify 重定向可能会去掉 /api 前缀，这里统一补回
+// 前缀归一化：无论 Netlify 传给函数的是原始路径（/api/pets）、
+// 改写路径（/.netlify/functions/api/pets）还是未带前缀的路径（/pets），
+// 都统一成 Express 能匹配的形式（Express 路由挂在 /api 与 /uploads 下）
+const FN_PREFIX = '/.netlify/functions/api'
+
 const wrappedHandler = serverless(app, {
   request: (request) => {
-    const url = request.url || ''
-    if (!url.startsWith('/api')) {
-      request.url = '/api' + (url === '/' ? '' : url)
+    let url = request.url || '/'
+
+    // 情况 1：Netlify 传入了改写后的函数路径，剥离前缀还原真实请求路径
+    if (url.startsWith(FN_PREFIX)) {
+      url = url.slice(FN_PREFIX.length) || '/'
     }
+
+    // 情况 2：已经带 /api 前缀，或指向 uploads 静态文件，直接放行
+    if (url.startsWith('/api/') || url === '/api' || url.startsWith('/uploads/')) {
+      request.url = url
+      return request
+    }
+
+    // 情况 3：未带前缀（如 /pets、/health），补上 /api
+    request.url = '/api' + (url === '/' ? '' : url)
     return request
   },
 })

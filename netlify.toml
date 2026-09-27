@@ -7,23 +7,26 @@
 [build.environment]
   NODE_VERSION = "20"
 
-# SPA 路由回退：非 /api /uploads 的请求都返回 index.html
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  force = false
+# 注意：Netlify 按声明顺序匹配重定向规则，具体规则必须放在 SPA 通配回退之前，
+# 否则 /* /index.html 会先命中 /api 请求，导致函数永远无法被调用。
 
-# /api/* 转发到 Netlify 函数
+# 1) /api/* 转发到 Netlify 函数
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
   force = true
 
-# /uploads/* 转发到函数（函数返回临时文件）
+# 2) /uploads/* 转发到函数（函数内读取 /tmp 临时文件返回）
 [[redirects]]
   from = "/uploads/*"
   to = "/.netlify/functions/api/uploads/:splat"
   status = 200
   force = true
+
+# 3) SPA 路由回退：其余所有请求返回 index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
