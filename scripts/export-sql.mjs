@@ -5,6 +5,9 @@
  * 输出:  项目根目录下的 seed.sql
  * 导入:  turso db shell <你的数据库名> < seed.sql
  */
+// 本脚本仅在本地运行（读取 file:./data/app.db），必须使用 Node 原生版客户端。
+// 注意：@libsql/client/web 不支持 file: 协议，切勿替换。
+// 此文件不会被 Netlify 函数打包（函数入口是 netlify/functions/api.ts，不引用 scripts/）。
 import { createClient } from '@libsql/client';
 import fs from 'fs';
 import path from 'path';

@@ -1,8 +1,39 @@
-import { createClient, type Client } from '@libsql/client';
+// 只引入类型（type-only import 编译后完全擦除，不会进入打包产物）。
+// 运行时的 createClient 改为按环境懒加载，见下方 loadCreateClient()。
+import type { Client } from '@libsql/client';
 
 let client: Client;
 let initialized = false;
 let initPromise: Promise<void> | null = null;
+
+// 环境检测：serverless 平台（Netlify/Vercel/Lambda）文件系统只读，
+// 必须使用纯 JS 的 web 版客户端（走 HTTP，无原生 .node 绑定）。
+const IS_SERVERLESS = !!(
+  process.env.NETLIFY ||
+  process.env.VERCEL ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME
+);
+
+type CreateClientFn = (config: { url: string; authToken?: string }) => Client;
+let clientFactoryPromise: Promise<CreateClientFn> | null = null;
+
+/**
+ * 按运行环境懒加载 libSQL 客户端工厂：
+ * - Serverless（Netlify/Vercel）：@libsql/client/web —— 纯 JS，只支持 libsql:/https: 远程库，
+ *   绝不依赖 @libsql/linux-x64-gnu 等平台原生包（那是线上冷启动崩溃的根因）。
+ * - 本地：@libsql/client（Node 原生版）—— 只有它支持 file: 本地 SQLite 文件。
+ *
+ * 用动态 import() 而不是顶层静态 import：原生版客户端的模块顶层会立即 require
+ * 平台二进制包；放在永远不会执行的分支里懒加载，Netlify 打包后该模块工厂不会被调用。
+ */
+async function loadCreateClient(): Promise<CreateClientFn> {
+  if (!clientFactoryPromise) {
+    clientFactoryPromise = IS_SERVERLESS
+      ? import('@libsql/client/web').then((m) => m.createClient as CreateClientFn)
+      : import('@libsql/client').then((m) => m.createClient as CreateClientFn);
+  }
+  return clientFactoryPromise;
+}
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -126,12 +157,8 @@ export function initDb(): Promise<void> {
 
 async function doInit(): Promise<void> {
   try {
-    // 环境检测：serverless 平台（Netlify/Vercel/Lambda）文件系统只读，必须使用远程数据库
-    const IS_SERVERLESS = !!(
-      process.env.NETLIFY ||
-      process.env.VERCEL ||
-      process.env.AWS_LAMBDA_FUNCTION_NAME
-    );
+    // 按环境拿到对应的 createClient（serverless=web 纯 JS 版，本地=Node 原生版）
+    const createClient = await loadCreateClient();
 
     // 优先读取 Turso 环境变量；本地无配置时回退到本地 file: 数据库
     const url = process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL;
@@ -150,7 +177,7 @@ async function doInit(): Promise<void> {
       console.error('[db][init]   TURSO_AUTH_TOKEN  = <你的数据库访问令牌>');
       throw new Error('缺少 TURSO_DATABASE_URL 环境变量：Netlify 环境不支持本地 SQLite 文件，请配置 Turso 远程数据库');
     } else {
-      // 本地开发：使用 file: 协议
+      // 本地开发：使用 file: 协议（仅 Node 原生版客户端支持）
       const localPath = process.env.LOCAL_DB_PATH || 'file:./data/app.db';
       // 确保目录存在
       if (localPath.startsWith('file:')) {
